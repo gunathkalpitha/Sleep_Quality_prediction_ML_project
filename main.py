@@ -8,7 +8,10 @@ Original file is located at
 """
 
 import pandas as pd #import the library
-df = pd.read_csv('Sleep_health_and_lifestyle_dataset.csv') #import the data set
+import matplotlib.pyplot as plt
+from imblearn.over_sampling import SMOTE
+from sklearn.model_selection import cross_val_score
+df = pd.read_csv(r'E:/Projects/Sem5/ML/Sleep-Quality-ML/data/Sleep_health_and_lifestyle_dataset.csv') #import the data set
 df.head() # show the first 5 rows in the data set
 
 #Inspect the data
@@ -116,7 +119,18 @@ print(f"Rows before: {len(df)} | Rows after removing duplicates: {len(df_cleaned
 
 # Now update your X and y based on this cleaned data
 y = df_cleaned['Quality of Sleep']
-X = df_cleaned.drop(columns=['Quality of Sleep', 'Stress Level'])
+# Remove 'Blood Pressure' column if present (keep only numeric features)
+if 'Blood Pressure' in df_cleaned.columns:
+    X = df_cleaned.drop(columns=['Quality of Sleep', 'Stress Level', 'Blood Pressure'])
+else:
+    X = df_cleaned.drop(columns=['Quality of Sleep', 'Stress Level'])
+y = df_cleaned['Quality of Sleep']
+
+# Apply SMOTE to balance classes
+smote = SMOTE(random_state=42, k_neighbors=1)
+X_bal, y_bal = smote.fit_resample(X, y)
+print("Class distribution after SMOTE:")
+print(pd.Series(y_bal).value_counts())
 
 from sklearn.preprocessing import LabelEncoder
 
@@ -145,14 +159,10 @@ print(f"New columns: {X.columns.tolist()}")
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-# 1. Split the data
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-# 2. Scale the data (Important for SVM!)
+X_train, X_test, y_train, y_test = train_test_split(X_bal, y_bal, test_size=0.2, random_state=42)
 scaler = StandardScaler()
 X_train_scaled = scaler.fit_transform(X_train)
 X_test_scaled = scaler.transform(X_test)
-
 print("Step 1 Complete: Data is split and scaled.")
 
 #Train and Compare (The "Actual ML")
@@ -164,18 +174,70 @@ from sklearn.metrics import accuracy_score
 
 # 1. Random Forest
 rf = RandomForestClassifier(n_estimators=100, random_state=42)
-rf.fit(X_train, y_train) # RF works fine with unscaled data
+rf.fit(X_train, y_train)
 rf_acc = accuracy_score(y_test, rf.predict(X_test))
+
+# Cross-validation for Random Forest
+rf_cv_scores = cross_val_score(rf, X_bal, y_bal, cv=5)
+print(f"Random Forest Accuracy: {rf_acc * 100:.2f}%")
+print(f"Random Forest CV mean: {rf_cv_scores.mean() * 100:.2f}%")
 
 # 2. SVM
 svm = SVC(kernel='linear')
-svm.fit(X_train_scaled, y_train) # SVM MUST use scaled data
+svm.fit(X_train_scaled, y_train)
 svm_acc = accuracy_score(y_test, svm.predict(X_test_scaled))
 
-print(f"Random Forest Accuracy: {rf_acc * 100:.2f}%")
+# Cross-validation for SVM
+svm_cv_scores = cross_val_score(svm, scaler.transform(X_bal), y_bal, cv=5)
 print(f"SVM Accuracy: {svm_acc * 100:.2f}%")
+print(f"SVM CV mean: {svm_cv_scores.mean() * 100:.2f}%")
+
+# Hyperparameter tuning for Random Forest
+from sklearn.model_selection import GridSearchCV
+rf_param_grid = {
+    'n_estimators': [100, 200],
+    'max_depth': [None, 5, 10],
+    'min_samples_split': [2, 5],
+    'min_samples_leaf': [1, 2]
+}
+rf_grid = GridSearchCV(RandomForestClassifier(random_state=42), rf_param_grid, cv=3, n_jobs=-1)
+rf_grid.fit(X_train, y_train)
+print("Best Random Forest params:", rf_grid.best_params_)
+print(f"Best Random Forest CV score: {rf_grid.best_score_ * 100:.2f}%")
+
+# Hyperparameter tuning for SVM
+svm_param_grid = {
+    'C': [0.1, 1, 10],
+    'kernel': ['linear', 'rbf'],
+    'gamma': ['scale', 'auto']
+}
+svm_grid = GridSearchCV(SVC(), svm_param_grid, cv=3, n_jobs=-1)
+svm_grid.fit(X_train_scaled, y_train)
+print("Best SVM params:", svm_grid.best_params_)
+print(f"Best SVM CV score: {svm_grid.best_score_ * 100:.2f}%")
+
+# Save the best model and scaler for backend use
+import joblib
+joblib.dump(rf_grid.best_estimator_, 'models/sleep_quality_model.pkl')
+joblib.dump(scaler, 'models/scaler.pkl')
+print("Best model and scaler saved to 'models/' directory for backend use.")
 
 #Visualize the Result (The "Engineering Report")
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+
+# Confusion matrix for Random Forest
+rf_cm = confusion_matrix(y_test, rf.predict(X_test))
+disp_rf = ConfusionMatrixDisplay(confusion_matrix=rf_cm)
+disp_rf.plot(cmap='Blues')
+plt.title('Random Forest Confusion Matrix')
+plt.show()
+
+# Confusion matrix for SVM
+svm_cm = confusion_matrix(y_test, svm.predict(X_test_scaled))
+disp_svm = ConfusionMatrixDisplay(confusion_matrix=svm_cm)
+disp_svm.plot(cmap='Oranges')
+plt.title('SVM Confusion Matrix')
+plt.show()
 
 import matplotlib.pyplot as plt
 
