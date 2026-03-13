@@ -1,49 +1,16 @@
-
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { RefreshCw, Activity, Heart, Brain, Moon } from 'lucide-react';
-interface FormData {
-  gender: string;
-  age: number;
-  occupation: string;
-  sleep_duration: number;
-  physical_activity: number;
-  stress_level: number;
-  bmi_category: string;
-  heart_rate: number;
-  daily_steps: number;
-  sleep_disorder: string;
-  systolic_bp: number;
-  diastolic_bp: number;
-}
-interface PredictionDetails {
-  agreement?: boolean;
-  svm?: {
-    confidence?: number | null;
-  };
-  random_forest?: {
-    confidence?: number | null;
-  };
-}
-interface PredictionCardProps {
-  prediction: string;
-  formData: FormData;
-  modelDetails?: PredictionDetails;
-  onReset: () => void;
-}
-export function PredictionCard({
-  prediction,
-  formData,
-  modelDetails,
-  onReset
-}: PredictionCardProps) {
+
+export function PredictionCard({ prediction, formData, modelDetails, onReset }) {
   // Determine styles based on prediction
-  const getStatusColor = (pred: string) => {
+  const getStatusColor = (pred) => {
     const p = pred.toLowerCase();
     if (p.includes('poor') || p.includes('insomnia')) return 'red';
     if (p.includes('fair') || p.includes('average')) return 'yellow';
     return 'green'; // Good, Excellent, Normal
   };
+
   const status = getStatusColor(prediction);
   const statusStyles = {
     red: {
@@ -68,30 +35,33 @@ export function PredictionCard({
       icon: <Moon className="w-12 h-12 text-emerald-400" />
     }
   };
+
   const currentStyle = statusStyles[status];
+
   // Generate a personalized tip
   const getTip = () => {
     if (formData.sleep_duration < 6)
-    return 'Try to increase your sleep duration by establishing a consistent bedtime routine.';
+      return 'Try to increase your sleep duration by establishing a consistent bedtime routine.';
     if (formData.stress_level > 7)
-    return 'High stress can reduce sleep quality. Try relaxation techniques before bedtime.';
+      return 'High stress can reduce sleep quality. Try relaxation techniques before bedtime.';
     if (formData.daily_steps < 5000)
-    return 'Increasing your daily steps could help improve your sleep quality.';
+      return 'Increasing your daily steps could help improve your sleep quality.';
     if (formData.bmi_category === 'Overweight' || formData.bmi_category === 'Obese')
-    return 'Managing weight through diet and exercise can significantly improve sleep apnea symptoms.';
+      return 'Managing weight through diet and exercise can significantly improve sleep apnea symptoms.';
     if (status === 'green')
-    return "You're doing great! Keep maintaining your healthy habits.";
+      return "You're doing great! Keep maintaining your healthy habits.";
     return 'Focus on maintaining a regular sleep schedule and moderate physical activity.';
   };
+
   return (
     <div className="w-full max-w-2xl mx-auto animate-in fade-in zoom-in duration-500">
       <Card
-        className={`text-center p-8 border-2 ${currentStyle.border} ${currentStyle.glow}`}>
-
+        className={`text-center p-8 border-2 ${currentStyle.border} ${currentStyle.glow}`}
+      >
         <div className="flex justify-center mb-6">
           <div
-            className={`p-4 rounded-full ${currentStyle.bg} ring-1 ring-inset ${currentStyle.border.replace('border', 'ring')}`}>
-
+            className={`p-4 rounded-full ${currentStyle.bg} ring-1 ring-inset ${currentStyle.border.replace('border', 'ring')}`}
+          >
             {currentStyle.icon}
           </div>
         </div>
@@ -100,8 +70,8 @@ export function PredictionCard({
           Predicted Sleep Quality
         </h2>
         <div
-          className={`text-4xl md:text-5xl font-bold ${currentStyle.text} mb-6`}>
-
+          className={`text-4xl md:text-5xl font-bold ${currentStyle.text} mb-6`}
+        >
           {prediction}
         </div>
 
@@ -164,6 +134,6 @@ export function PredictionCard({
           Analyze Another
         </Button>
       </Card>
-    </div>);
-
+    </div>
+  );
 }

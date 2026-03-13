@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import { Card } from './ui/Card';
-
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
-
 import { Button } from './ui/Button';
 import { PredictionCard } from './PredictionCard';
 import {
@@ -16,33 +14,10 @@ import {
   Footprints,
   Brain,
   Stethoscope,
-  AlertCircle } from
-'lucide-react';
-interface FormData {
-  gender: string;
-  age: number;
-  occupation: string;
-  sleep_duration: number;
-  physical_activity: number;
-  stress_level: number;
-  bmi_category: string;
-  heart_rate: number;
-  daily_steps: number;
-  sleep_disorder: string;
-  systolic_bp: number;
-  diastolic_bp: number;
-}
-interface PredictionResult {
-  final_prediction: string;
-  agreement?: boolean;
-  svm?: {
-    confidence?: number | null;
-  };
-  random_forest?: {
-    confidence?: number | null;
-  };
-}
-const INITIAL_DATA: FormData = {
+  AlertCircle
+} from 'lucide-react';
+
+const INITIAL_DATA = {
   gender: 'Male',
   age: 30,
   occupation: 'Engineer',
@@ -56,17 +31,16 @@ const INITIAL_DATA: FormData = {
   systolic_bp: 120,
   diastolic_bp: 80
 };
-export function SleepForm() {
-  const [formData, setFormData] = useState<FormData>(INITIAL_DATA);
-  const [loading, setLoading] = useState(false);
-  const [prediction, setPrediction] = useState<PredictionResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
+export function SleepForm() {
+  const [formData, setFormData] = useState(INITIAL_DATA);
+  const [loading, setLoading] = useState(false);
+  const [prediction, setPrediction] = useState(null);
+  const [error, setError] = useState(null);
+
+  const handleChange = (e) => {
     const { name, value } = e.target;
-    const numericFields: Array<keyof FormData> = [
+    const numericFields = [
       'age',
       'sleep_duration',
       'physical_activity',
@@ -76,14 +50,15 @@ export function SleepForm() {
       'systolic_bp',
       'diastolic_bp'
     ];
-    const newValue = numericFields.includes(name as keyof FormData) ? Number(value) : value;
+    const newValue = numericFields.includes(name) ? Number(value) : value;
 
     setFormData((prev) => ({
       ...prev,
       [name]: newValue
     }));
   };
-  const handleSubmit = async (e: React.FormEvent) => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -121,25 +96,27 @@ export function SleepForm() {
     setFormData(INITIAL_DATA);
     setError(null);
   };
+
   if (prediction) {
     return (
       <PredictionCard
         prediction={prediction.final_prediction}
         formData={formData}
         modelDetails={prediction}
-        onReset={handleReset} />);
-
-
+        onReset={handleReset}
+      />
+    );
   }
+
   return (
     <Card className="w-full max-w-4xl mx-auto" glow="teal">
       <form onSubmit={handleSubmit} className="space-y-8">
-        {error &&
-        <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-lg flex items-center gap-3">
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
             <p className="text-sm">{error}</p>
           </div>
-        }
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Row 1 */}
@@ -163,7 +140,8 @@ export function SleepForm() {
             value={formData.age}
             onChange={handleChange}
             icon={<User className="w-4 h-4" />}
-            suffix="yrs" />
+            suffix="yrs"
+          />
           <Select
             label="Occupation"
             name="occupation"
@@ -218,7 +196,8 @@ export function SleepForm() {
             value={formData.heart_rate}
             onChange={handleChange}
             icon={<Heart className="w-4 h-4" />}
-            suffix="bpm" />
+            suffix="bpm"
+          />
           {/* Row 3 */}
           <Input
             label="Daily Steps"
@@ -229,7 +208,8 @@ export function SleepForm() {
             value={formData.daily_steps}
             onChange={handleChange}
             icon={<Footprints className="w-4 h-4" />}
-            suffix="steps" />
+            suffix="steps"
+          />
           <Input
             label="Systolic BP"
             name="systolic_bp"
@@ -239,7 +219,8 @@ export function SleepForm() {
             value={formData.systolic_bp}
             onChange={handleChange}
             icon={<Stethoscope className="w-4 h-4" />}
-            suffix="mmHg" />
+            suffix="mmHg"
+          />
           <Input
             label="Diastolic BP"
             name="diastolic_bp"
@@ -249,7 +230,8 @@ export function SleepForm() {
             value={formData.diastolic_bp}
             onChange={handleChange}
             icon={<Activity className="w-4 h-4" />}
-            suffix="mmHg" />
+            suffix="mmHg"
+          />
         </div>
 
         {/* Row 4 - Sliders */}
@@ -292,12 +274,12 @@ export function SleepForm() {
             type="submit"
             fullWidth
             isLoading={loading}
-            className="h-14 text-lg font-semibold tracking-wide">
-
+            className="h-14 text-lg font-semibold tracking-wide"
+          >
             Predict Sleep Quality
           </Button>
         </div>
       </form>
-    </Card>);
-
+    </Card>
+  );
 }
