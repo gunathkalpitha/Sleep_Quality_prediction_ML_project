@@ -1,107 +1,133 @@
-import warnings
-import sklearn
-# Suppress all sklearn UserWarnings about feature names
-warnings.filterwarnings(
-    "ignore",
-    r"X does not have valid feature names, but .+ was fitted with feature names",
-    category=UserWarning,
-    module=r"sklearn"
-)
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import joblib
-import pandas as pd
+import numpy as np
+import os
 
-# Correct CSV path for loading data
-CSV_PATH = r'E:/Projects/Sem5/ML/Sleep-Quality-ML/data/Sleep_health_and_lifestyle_dataset.csv'
+app = FastAPI(title="Sleep Quality Predictor API")
 
-# Load the dataset
-try:
-    df = pd.read_csv(CSV_PATH)
-except FileNotFoundError:
-    df = None
-    print(f"CSV file not found at {CSV_PATH}. Please check the path.")
-
-app = FastAPI()
-
-# Allow your React app (localhost:5173) to talk to this Python server
+# ── CORS (allow React frontend) ──────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # For localhost development, "*" is easiest
+    allow_origins=["http://localhost:5173"],  # Vite default port
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load your 96.30% accurate model and scaler
-model = joblib.load('../models/sleep_quality_model.pkl')
-scaler = joblib.load('../models/scaler.pkl')
-print("Scaler loaded:", scaler)
-print("Model loaded:", model)
+# ── Load Models ──────────────────────────────────────
+BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
+MODELS_DIR = os.path.join(BASE_DIR, '..', 'models')
 
-# Define what the input data looks like
+svm_model = joblib.load(os.path.join(MODELS_DIR, 'svm_model.pkl'))
+rf_model  = joblib.load(os.path.join(MODELS_DIR, 'rf_model.pkl'))
+scaler    = joblib.load(os.path.join(MODELS_DIR, 'scaler.pkl'))
+
+print("✅ Models loaded successfully!")
+
+# ── Label Map ────────────────────────────────────────
+LABELS = {0: 'Poor', 1: 'Fair', 2: 'Good'}
+
+# ── Encoding Maps ────────────────────────────────────
+GENDER_MAP = {
+    'Male':   1,
+    'Female': 0
+}
+
+OCCUPATION_MAP = {
+    'Accountant':           0,
+    'Doctor':               1,
+    'Engineer':             2,
+    'Lawyer':               3,
+    'Manager':              4,
+    'Nurse':                5,
+    'Sales Representative': 6,
+    'Salesperson':          7,
+    'Scientist':            8,
+    'Software Engineer':    9,
+    'Teacher':              10,
+    'Unemployed':           11
+}
+
+BMI_MAP = {
+    'Normal':       0,
+    'Normal Weight':1,
+    'Obese':        2,
+    'Overweight':   3
+}
+
+DISORDER_MAP = {
+    'None':         0,
+    'Insomnia':     1,
+    'Sleep Apnea':  2
+}
+
+# ── Request Schema ───────────────────────────────────
 class SleepData(BaseModel):
-    gender: int
-    age: int
-    occupation: int
-    sleep_duration: float
-    physical_activity: int
-    bmi: int
-    heart_rate: int
-    daily_steps: int
-    disorder: int
-    systolic: int
-    diastolic: int
+    gender:             str
+    age:                int
+    occupation:         str
+    sleep_duration:     float
+    physical_activity:  int
+    stress_level:       int
+    bmi_category:       str
+    heart_rate:         int
+    daily_steps:        int
+    sleep_disorder:     str
+    systolic_bp:        int
+    diastolic_bp:       int
+
+# ── Helper: encode + build feature array ─────────────
+def build_features(data: SleepData):
+    return np.array([[
+        GENDER_MAP.get(data.gender, 1),
+        data.age,
+        OCCUPATION_MAP.get(data.occupation, 11),
+        data.sleep_duration,
+        data.physical_activity,
+        data.stress_level,
+        BMI_MAP.get(data.bmi_category, 0),
+        data.heart_rate,
+        data.daily_steps,
+        DISORDER_MAP.get(data.sleep_disorder, 0),
+        data.systolic_bp,
+        data.diastolic_bp
+    ]])
+
+# ── Routes ───────────────────────────────────────────
+
+@app.get("/")
+def root():
+    return {"message": "Sleep Quality Predictor API is running! ✅"}
 
 @app.post("/predict")
-async def predict_sleep(request: Request):
-    try:
-        data = await request.json()
-        print("Received data:", data)
-        # Validate all required fields
-        required_fields = [
-            "gender", "age", "occupation", "sleep_duration", "physical_activity",
-            "bmi", "heart_rate", "daily_steps", "disorder", "systolic", "diastolic"
-        ]
-        for field in required_fields:
-            if field not in data:
-                return {"error": f"Missing field: {field}"}
-            columns = [
-                "Gender", "Age", "Occupation", "Sleep Duration", "Physical Activity Level",
-                "BMI Category", "Heart Rate", "Daily Steps", "Sleep Disorder", "Systolic", "Diastolic"
-            ]
-            # Use numeric codes for all columns, matching scaler/model training
-            input_row = [
-                int(data["gender"]),
-                int(data["age"]),
-                int(data["occupation"]),
-                float(data["sleep_duration"]),
-                int(data["physical_activity"]),
-                float(data["bmi"]),
-                int(data["heart_rate"]),
-                int(data["daily_steps"]),
-                int(data["disorder"]),
-                int(data["systolic"]),
-                int(data["diastolic"])
-            ]
-            input_df = pd.DataFrame([input_row], columns=columns)
-            # Pass DataFrame directly to scaler and model
-            scaled_data = scaler.transform(input_df.values)
-            prediction = model.predict(scaled_data)
-        # Get prediction probability/confidence if supported
-        # Always map prediction to result
-        categories = {4: "Poor", 5: "Poor", 6: "Fair", 7: "Good", 8: "Good", 9: "Excellent"}
-        result = categories.get(int(prediction[0]), "Unknown")
-        # Try to get confidence
-        try:
-            proba = model.predict_proba(scaled_data)
-            confidence = float(proba.max())
-        except Exception:
-            confidence = None
-        response = {"prediction": result}
-        if confidence is not None:
-            response["confidence"] = round(confidence, 4)
-        return response
-    except Exception as e:
-        print("Error in /predict:", e)
-        return {"error": str(e), "details": "Ensure all fields are present and numeric. See server logs for more info."}
+def predict(data: SleepData):
+    # Build feature array
+    features = build_features(data)
+
+    # Scale for SVM
+    features_scaled = scaler.transform(features)
+
+    # Predictions
+    svm_pred = svm_model.predict(features_scaled)[0]
+    rf_pred  = rf_model.predict(features)[0]
+
+    # Probabilities
+    svm_proba = svm_model.predict_proba(features_scaled)[0] if hasattr(svm_model, 'predict_proba') else None
+    rf_proba  = rf_model.predict_proba(features)[0]
+
+    return {
+        "svm": {
+            "prediction": LABELS[svm_pred],
+            "score":      int(svm_pred),
+            "confidence": round(float(max(svm_proba)) * 100, 2) if svm_proba is not None else None
+        },
+        "random_forest": {
+            "prediction": LABELS[rf_pred],
+            "score":      int(rf_pred),
+            "confidence": round(float(max(rf_proba)) * 100, 2)
+        },
+        "agreement": LABELS[svm_pred] == LABELS[rf_pred],
+        "final_prediction": LABELS[svm_pred]  # SVM as primary model
+    }

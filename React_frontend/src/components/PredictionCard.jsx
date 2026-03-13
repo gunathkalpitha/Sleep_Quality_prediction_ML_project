@@ -2,7 +2,7 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { RefreshCw, Activity, Heart, Brain, Moon } from 'lucide-react';
 
-export function PredictionCard({ prediction, formData, onReset }) {
+export function PredictionCard({ prediction, formData, modelDetails, onReset }) {
   // Determine styles based on prediction
   const getStatusColor = (pred) => {
     const p = pred.toLowerCase();
@@ -42,9 +42,11 @@ export function PredictionCard({ prediction, formData, onReset }) {
   const getTip = () => {
     if (formData.sleep_duration < 6)
       return 'Try to increase your sleep duration by establishing a consistent bedtime routine.';
+    if (formData.stress_level > 7)
+      return 'High stress can reduce sleep quality. Try relaxation techniques before bedtime.';
     if (formData.daily_steps < 5000)
       return 'Increasing your daily steps could help improve your sleep quality.';
-    if (formData.bmi > 25)
+    if (formData.bmi_category === 'Overweight' || formData.bmi_category === 'Obese')
       return 'Managing weight through diet and exercise can significantly improve sleep apnea symptoms.';
     if (status === 'green')
       return "You're doing great! Keep maintaining your healthy habits.";
@@ -79,6 +81,27 @@ export function PredictionCard({ prediction, formData, onReset }) {
             Health Tip
           </h3>
           <p className="text-gray-300 leading-relaxed">{getTip()}</p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-sm">
+          <div className="bg-charcoal-700/30 p-3 rounded-lg">
+            <div className="text-gray-500 text-xs">SVM Confidence</div>
+            <div className="text-white font-medium">
+              {modelDetails?.svm?.confidence != null ? `${modelDetails.svm.confidence}%` : 'N/A'}
+            </div>
+          </div>
+          <div className="bg-charcoal-700/30 p-3 rounded-lg">
+            <div className="text-gray-500 text-xs">RF Confidence</div>
+            <div className="text-white font-medium">
+              {modelDetails?.random_forest?.confidence != null ? `${modelDetails.random_forest.confidence}%` : 'N/A'}
+            </div>
+          </div>
+          <div className="bg-charcoal-700/30 p-3 rounded-lg">
+            <div className="text-gray-500 text-xs">Model Agreement</div>
+            <div className="text-white font-medium">
+              {modelDetails?.agreement === undefined ? 'N/A' : modelDetails.agreement ? 'Yes' : 'No'}
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 text-sm">

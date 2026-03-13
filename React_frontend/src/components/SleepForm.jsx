@@ -12,22 +12,24 @@ import {
   Heart,
   Activity,
   Footprints,
+  Brain,
   Stethoscope,
   AlertCircle
 } from 'lucide-react';
 
 const INITIAL_DATA = {
-  gender: 0,
+  gender: 'Male',
   age: 30,
-  occupation: 0,
-  bmi: 22,
-  disorder: 0,
+  occupation: 'Engineer',
+  sleep_duration: 7.5,
+  physical_activity: 60,
+  stress_level: 5,
+  bmi_category: 'Normal',
   heart_rate: 70,
   daily_steps: 8000,
-  systolic: 120,
-  diastolic: 80,
-  sleep_duration: 7.5,
-  physical_activity: 60
+  sleep_disorder: 'None',
+  systolic_bp: 120,
+  diastolic_bp: 80
 };
 
 export function SleepForm() {
@@ -36,34 +38,20 @@ export function SleepForm() {
   const [prediction, setPrediction] = useState(null);
   const [error, setError] = useState(null);
 
-  // For select fields, map display value to backend code
   const handleChange = (e) => {
     const { name, value } = e.target;
-    let newValue = Number(value);
+    const numericFields = [
+      'age',
+      'sleep_duration',
+      'physical_activity',
+      'stress_level',
+      'heart_rate',
+      'daily_steps',
+      'systolic_bp',
+      'diastolic_bp'
+    ];
+    const newValue = numericFields.includes(name) ? Number(value) : value;
 
-    if (name === 'gender') {
-      newValue = value === 'Male' ? 0 : 1;
-    }
-    if (name === 'disorder') {
-      newValue = value === 'None' ? 0 : 1;
-    }
-    if (name === 'occupation') {
-      // Example mapping: you can adjust as needed
-      const occupationMap = {
-        'Unemployed': 0,
-        'Student': 1,
-        'Engineer': 2,
-        'Doctor': 3,
-        'Teacher': 4,
-        'Nurse': 5,
-        'Salesperson': 6,
-        'Accountant': 7,
-        'Scientist': 8,
-        'Lawyer': 9,
-        'Manager': 10
-      };
-      newValue = occupationMap[value] ?? 0;
-    }
     setFormData((prev) => ({
       ...prev,
       [name]: newValue
@@ -75,39 +63,29 @@ export function SleepForm() {
     setLoading(true);
     setError(null);
     try {
-      // Map frontend FormData to backend expected keys
-      const backendData = {
-        gender: formData.gender,
-        age: formData.age,
-        occupation: formData.occupation,
-        bmi: formData.bmi,
-        disorder: formData.disorder,
-        heart_rate: formData.heart_rate,
-        daily_steps: formData.daily_steps,
-        systolic: formData.systolic,
-        diastolic: formData.diastolic,
-        sleep_duration: formData.sleep_duration,
-        physical_activity: formData.physical_activity
-      };
-      const response = await fetch('http://127.0.0.1:8000/predict', {
+      const response = await fetch('http://localhost:8000/predict', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(backendData)
+        body: JSON.stringify(formData)
       });
       if (!response.ok) {
-        throw new Error('Failed to connect to the prediction service');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || errorData.error || 'Prediction request failed');
       }
       const result = await response.json();
-      // Assuming the API returns { "prediction": "Good" } or similar
-      setPrediction(result.prediction || 'Good Sleep Quality');
+      setPrediction({
+        final_prediction: result.final_prediction || 'Good',
+        agreement: result.agreement,
+        svm: result.svm,
+        random_forest: result.random_forest
+      });
     } catch (err) {
       console.error(err);
       setError(
-        'Could not connect to the local prediction engine. Please ensure the backend is running at port 8000.'
+        err instanceof Error ? err.message : 'Could not connect to the prediction engine on port 8000.'
       );
-      // Do not use mock/demo fallback in production
     } finally {
       setLoading(false);
     }
@@ -122,8 +100,9 @@ export function SleepForm() {
   if (prediction) {
     return (
       <PredictionCard
-        prediction={prediction}
+        prediction={prediction.final_prediction}
         formData={formData}
+        modelDetails={prediction}
         onReset={handleReset}
       />
     );
@@ -144,7 +123,7 @@ export function SleepForm() {
           <Select
             label="Gender"
             name="gender"
-            value={formData.gender === 0 ? 'Male' : 'Female'}
+            value={formData.gender}
             onChange={handleChange}
             icon={<User className="w-4 h-4" />}
             options={[
@@ -166,31 +145,17 @@ export function SleepForm() {
           <Select
             label="Occupation"
             name="occupation"
-            value={(() => {
-              const occMap = [
-                'Unemployed',
-                'Student',
-                'Engineer',
-                'Doctor',
-                'Teacher',
-                'Nurse',
-                'Salesperson',
-                'Accountant',
-                'Scientist',
-                'Lawyer',
-                'Manager'
-              ];
-              return occMap[formData.occupation] || 'Unemployed';
-            })()}
+            value={formData.occupation}
             onChange={handleChange}
             icon={<Briefcase className="w-4 h-4" />}
             options={[
               { value: 'Unemployed', label: 'Unemployed' },
-              { value: 'Student', label: 'Student' },
+              { value: 'Software Engineer', label: 'Software Engineer' },
               { value: 'Engineer', label: 'Engineer' },
               { value: 'Doctor', label: 'Doctor' },
               { value: 'Teacher', label: 'Teacher' },
               { value: 'Nurse', label: 'Nurse' },
+              { value: 'Sales Representative', label: 'Sales Representative' },
               { value: 'Salesperson', label: 'Salesperson' },
               { value: 'Accountant', label: 'Accountant' },
               { value: 'Scientist', label: 'Scientist' },
@@ -200,24 +165,26 @@ export function SleepForm() {
           />
           {/* Row 2 */}
           <Input
-            label="BMI (numeric)"
-            name="bmi"
+            label="Stress Level"
+            name="stress_level"
             type="number"
-            min={10}
-            max={50}
-            value={formData.bmi}
+            min={1}
+            max={10}
+            value={formData.stress_level}
             onChange={handleChange}
-            icon={<Scale className="w-4 h-4" />}
+            icon={<Brain className="w-4 h-4" />}
           />
           <Select
-            label="Disorder"
-            name="disorder"
-            value={formData.disorder === 0 ? 'None' : 'Yes'}
+            label="BMI Category"
+            name="bmi_category"
+            value={formData.bmi_category}
             onChange={handleChange}
-            icon={<Moon className="w-4 h-4" />}
+            icon={<Scale className="w-4 h-4" />}
             options={[
-              { value: 'None', label: 'None' },
-              { value: 'Yes', label: 'Yes' }
+              { value: 'Normal', label: 'Normal' },
+              { value: 'Normal Weight', label: 'Normal Weight' },
+              { value: 'Overweight', label: 'Overweight' },
+              { value: 'Obese', label: 'Obese' }
             ]}
           />
           <Input
@@ -245,22 +212,22 @@ export function SleepForm() {
           />
           <Input
             label="Systolic BP"
-            name="systolic"
+            name="systolic_bp"
             type="number"
             min={80}
             max={200}
-            value={formData.systolic}
+            value={formData.systolic_bp}
             onChange={handleChange}
             icon={<Stethoscope className="w-4 h-4" />}
             suffix="mmHg"
           />
           <Input
             label="Diastolic BP"
-            name="diastolic"
+            name="diastolic_bp"
             type="number"
             min={40}
             max={130}
-            value={formData.diastolic}
+            value={formData.diastolic_bp}
             onChange={handleChange}
             icon={<Activity className="w-4 h-4" />}
             suffix="mmHg"
@@ -287,6 +254,18 @@ export function SleepForm() {
             max={100}
             value={formData.physical_activity}
             onChange={handleChange}
+          />
+          <Select
+            label="Sleep Disorder"
+            name="sleep_disorder"
+            value={formData.sleep_disorder}
+            onChange={handleChange}
+            icon={<Moon className="w-4 h-4" />}
+            options={[
+              { value: 'None', label: 'None' },
+              { value: 'Insomnia', label: 'Insomnia' },
+              { value: 'Sleep Apnea', label: 'Sleep Apnea' }
+            ]}
           />
         </div>
 

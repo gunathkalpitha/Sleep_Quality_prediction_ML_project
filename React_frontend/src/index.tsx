@@ -1,7 +1,8 @@
 import './index.css';
-import "./index.css";
+import { createRoot } from 'react-dom/client';
+import { App } from './App';
 
-import { render } from "react-dom";
-import { App } from "./App";
-
-render(<App />, document.getElementById("root"));
+const rootElement = document.getElementById('root');
+if (rootElement) {
+	createRoot(rootElement).render(<App />);
+}
