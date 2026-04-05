@@ -8,7 +8,7 @@ interface FormData {
   occupation: string;
   sleep_duration: number;
   physical_activity: number;
-  stress_level: number;
+
   bmi_category: string;
   heart_rate: number;
   daily_steps: number;
@@ -73,8 +73,7 @@ export function PredictionCard({
   const getTip = () => {
     if (formData.sleep_duration < 6)
     return 'Try to increase your sleep duration by establishing a consistent bedtime routine.';
-    if (formData.stress_level > 7)
-    return 'High stress can reduce sleep quality. Try relaxation techniques before bedtime.';
+
     if (formData.daily_steps < 5000)
     return 'Increasing your daily steps could help improve your sleep quality.';
     if (formData.bmi_category === 'Overweight' || formData.bmi_category === 'Obese')
