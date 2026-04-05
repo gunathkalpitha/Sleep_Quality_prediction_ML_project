@@ -23,7 +23,6 @@ const INITIAL_DATA = {
   occupation: 'Engineer',
   sleep_duration: 7.5,
   physical_activity: 60,
-  stress_level: 5,
   bmi_category: 'Normal',
   heart_rate: 70,
   daily_steps: 8000,
@@ -44,7 +43,6 @@ export function SleepForm() {
       'age',
       'sleep_duration',
       'physical_activity',
-      'stress_level',
       'heart_rate',
       'daily_steps',
       'systolic_bp',
@@ -164,16 +162,6 @@ export function SleepForm() {
             ]}
           />
           {/* Row 2 */}
-          <Input
-            label="Stress Level"
-            name="stress_level"
-            type="number"
-            min={1}
-            max={10}
-            value={formData.stress_level}
-            onChange={handleChange}
-            icon={<Brain className="w-4 h-4" />}
-          />
           <Select
             label="BMI Category"
             name="bmi_category"

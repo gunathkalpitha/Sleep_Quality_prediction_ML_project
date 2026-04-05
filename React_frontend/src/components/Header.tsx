@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Moon, Sparkles } from 'lucide-react';
 export function Header() {
   return (

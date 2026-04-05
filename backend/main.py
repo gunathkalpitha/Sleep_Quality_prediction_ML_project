@@ -10,7 +10,7 @@ app = FastAPI(title="Sleep Quality Predictor API")
 # ── CORS (allow React frontend) ──────────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite default port
+    allow_origins=["http://localhost:5173"],  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -70,7 +70,7 @@ class SleepData(BaseModel):
     occupation:         str
     sleep_duration:     float
     physical_activity:  int
-    stress_level:       int
+   
     bmi_category:       str
     heart_rate:         int
     daily_steps:        int
@@ -86,7 +86,7 @@ def build_features(data: SleepData):
         OCCUPATION_MAP.get(data.occupation, 11),
         data.sleep_duration,
         data.physical_activity,
-        data.stress_level,
+        
         BMI_MAP.get(data.bmi_category, 0),
         data.heart_rate,
         data.daily_steps,
@@ -105,17 +105,18 @@ def root():
 def predict(data: SleepData):
     # Build feature array
     features = build_features(data)
+    features_11 = features[:, :11]  # Only use first 11 features
 
     # Scale for SVM
-    features_scaled = scaler.transform(features)
+    features_scaled = scaler.transform(features_11)
 
     # Predictions
     svm_pred = svm_model.predict(features_scaled)[0]
-    rf_pred  = rf_model.predict(features)[0]
+    rf_pred  = rf_model.predict(features_11)[0]
 
     # Probabilities
     svm_proba = svm_model.predict_proba(features_scaled)[0] if hasattr(svm_model, 'predict_proba') else None
-    rf_proba  = rf_model.predict_proba(features)[0]
+    rf_proba  = rf_model.predict_proba(features_11)[0]
 
     return {
         "svm": {
